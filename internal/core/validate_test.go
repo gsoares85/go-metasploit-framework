@@ -201,3 +201,13 @@ func TestOptionCheck(t *testing.T) {
 		t.Error("custom Check(bad) = nil, want error")
 	}
 }
+
+func TestOptionCheckLengthCap(t *testing.T) {
+	o := Option{Name: "DATA", Type: OptString}
+	if err := o.Check(strings.Repeat("a", maxValueLen)); err != nil {
+		t.Errorf("Check at max length = %v, want nil", err)
+	}
+	if err := o.Check(strings.Repeat("a", maxValueLen+1)); !errors.Is(err, ErrInvalidValue) {
+		t.Errorf("Check over max length = %v, want ErrInvalidValue", err)
+	}
+}

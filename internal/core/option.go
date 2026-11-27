@@ -63,6 +63,10 @@ type Option struct {
 	Validate func(v string) error
 }
 
+// maxValueLen bounds the length of an option value so an untrusted caller cannot
+// force disproportionate work or allocation during validation.
+const maxValueLen = 8192
+
 // validator returns the effective validator for the option: the custom one when
 // set, otherwise the default validator for the type.
 func (o Option) validator() func(string) error {
@@ -76,6 +80,9 @@ func (o Option) validator() func(string) error {
 // option but never includes the raw value, so sensitive values are not leaked
 // into logs.
 func (o Option) Check(v string) error {
+	if len(v) > maxValueLen {
+		return fmt.Errorf("option %q: %w: value exceeds %d bytes", o.Name, ErrInvalidValue, maxValueLen)
+	}
 	if err := o.validator()(v); err != nil {
 		return fmt.Errorf("option %q: %w", o.Name, err)
 	}
