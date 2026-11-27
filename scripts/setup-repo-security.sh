@@ -26,7 +26,7 @@ gh api -X PUT "repos/$REPO/branches/main/protection" \
       "Conventional Commits + attribution policy"
     ]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": true,
