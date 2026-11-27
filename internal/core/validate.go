@@ -38,6 +38,9 @@ func ValidateString(v string) error {
 
 // ValidateInt accepts a base-10 integer.
 func ValidateInt(v string) error {
+	if v == "" {
+		return ErrEmptyValue
+	}
 	if _, err := strconv.Atoi(v); err != nil {
 		return fmt.Errorf("%w: expected an integer", ErrInvalidValue)
 	}
@@ -46,6 +49,9 @@ func ValidateInt(v string) error {
 
 // ValidateBool accepts true/false/1/0/yes/no, case-insensitively.
 func ValidateBool(v string) error {
+	if v == "" {
+		return ErrEmptyValue
+	}
 	if _, ok := boolValues[strings.ToLower(v)]; !ok {
 		return fmt.Errorf("%w: expected a boolean (true/false)", ErrInvalidValue)
 	}
@@ -54,6 +60,9 @@ func ValidateBool(v string) error {
 
 // ValidatePort accepts an integer in the range 1-65535.
 func ValidatePort(v string) error {
+	if v == "" {
+		return ErrEmptyValue
+	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
 		return fmt.Errorf("%w: port must be a number", ErrInvalidValue)
@@ -73,6 +82,11 @@ func ValidateAddress(v string) error {
 	}
 	if net.ParseIP(v) != nil {
 		return nil
+	}
+	// A dotted-decimal that is not a valid IP (e.g. "256.1.1.1") is a malformed
+	// address, not a hostname, even though its labels are syntactically valid.
+	if looksLikeIPv4(v) {
+		return fmt.Errorf("%w: not a valid IPv4 address", ErrInvalidValue)
 	}
 	if isValidHostname(v) {
 		return nil
@@ -104,6 +118,9 @@ func ValidatePath(v string) error {
 // compared case-insensitively.
 func ValidateEnum(allowed []string) func(string) error {
 	return func(v string) error {
+		if v == "" {
+			return ErrEmptyValue
+		}
 		for _, a := range allowed {
 			if strings.EqualFold(v, a) {
 				return nil
@@ -159,6 +176,26 @@ func isValidHostname(v string) bool {
 				c >= '0' && c <= '9',
 				c == '-':
 			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// looksLikeIPv4 reports whether v has the shape of a dotted-decimal IPv4 address
+// (four all-numeric labels), regardless of whether each octet is in range.
+func looksLikeIPv4(v string) bool {
+	parts := strings.Split(v, ".")
+	if len(parts) != 4 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+		for i := 0; i < len(p); i++ {
+			if p[i] < '0' || p[i] > '9' {
 				return false
 			}
 		}

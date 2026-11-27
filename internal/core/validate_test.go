@@ -45,8 +45,14 @@ func TestValidatePort(t *testing.T) {
 			if (err != nil) != c.wantErr {
 				t.Fatalf("ValidatePort(%q) error = %v, wantErr %v", c.in, err, c.wantErr)
 			}
-			if err != nil && !errors.Is(err, ErrInvalidValue) {
-				t.Errorf("ValidatePort(%q): error is not ErrInvalidValue: %v", c.in, err)
+			if err != nil {
+				want := ErrInvalidValue
+				if c.in == "" {
+					want = ErrEmptyValue
+				}
+				if !errors.Is(err, want) {
+					t.Errorf("ValidatePort(%q): error %v is not %v", c.in, err, want)
+				}
 			}
 		})
 	}
@@ -90,9 +96,12 @@ func TestValidateAddress(t *testing.T) {
 	}{
 		{"127.0.0.1", false},
 		{"::1", false},
+		{"2001:db8::1", false},
 		{"example.com", false},
+		{"example.com.", false},
 		{"localhost", false},
 		{"", true},
+		{"256.1.1.1", true},
 		{"-bad.com", true},
 		{"a..b", true},
 		{"has space", true},
