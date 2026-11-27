@@ -38,16 +38,30 @@ gh api -X PUT "repos/$REPO/branches/main/protection" \
   "allow_force_pushes": false,
   "allow_deletions": false,
   "block_creations": false,
-  "required_conversation_resolution": true,
-  "required_signatures": true
+  "required_conversation_resolution": true
 }
 JSON
 
-echo ">> Enabling secret scanning, push protection and vulnerability alerts..."
-gh api -X PATCH "repos/$REPO" \
-  -F security_and_analysis.secret_scanning.status=enabled \
-  -F security_and_analysis.secret_scanning_push_protection.status=enabled >/dev/null || \
+echo ">> Requiring signed commits on 'main'..."
+# Signature enforcement has its own endpoint; it is not a field of the protection payload.
+gh api -X POST "repos/$REPO/branches/main/protection/required_signatures" >/dev/null \
+  && echo "   signed commits required"
+
+echo ">> Enabling secret scanning and push protection..."
+# gh api -F sends flat fields; the nested object is sent via --input JSON.
+gh api -X PATCH "repos/$REPO" --input - >/dev/null <<'JSON' || \
   echo "   (secret scanning may require GitHub Advanced Security on private repos)"
+{
+  "security_and_analysis": {
+    "secret_scanning": { "status": "enabled" },
+    "secret_scanning_push_protection": { "status": "enabled" }
+  }
+}
+JSON
+
+echo ">> Enabling private vulnerability reporting..."
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting" >/dev/null \
+  && echo "   private vulnerability reporting enabled"
 
 gh api -X PUT "repos/$REPO/vulnerability-alerts" >/dev/null && echo "   vulnerability alerts enabled"
 gh api -X PUT "repos/$REPO/automated-security-fixes" >/dev/null && echo "   automated security fixes enabled"

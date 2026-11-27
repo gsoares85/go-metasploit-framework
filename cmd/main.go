@@ -46,5 +46,4 @@ func handleCommand(args []string) {
 func printHelp() {
 	fmt.Println("Available commands:")
 	fmt.Println("  help - Display this help message")
-	fmt.Println("  workspace - Manage workspaces")
 }

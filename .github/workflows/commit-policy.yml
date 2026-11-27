@@ -3,6 +3,8 @@ name: Commit policy
 on:
   pull_request:
     branches: [main]
+    # 'edited' so the policy re-runs when the PR title/body is changed without a push.
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read

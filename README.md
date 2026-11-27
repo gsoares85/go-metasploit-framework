@@ -26,26 +26,33 @@ management, and interfaces.
 - **Clean Code** — small functions, intention-revealing names, explicit error handling,
   tests for business rules.
 
-## Scope
+## Scope (roadmap)
 
-| Area | Built | Scaffolding only |
-|------|:-----:|:----------------:|
-| Core (framework object, datastore, events, jobs) | ✅ | |
-| Module engine (contract, loader, registry, search) | ✅ | |
-| Workspaces & database (hosts, services, loot, creds, notes) | ✅ | |
-| Reconnaissance modules (port/service/host discovery) | ✅ | |
-| Session / handler / job management | ✅ | |
-| Interfaces (console, RPC, db utility, resource scripts) | ✅ | |
-| Exploit / payload / post / encoder / nop / evasion bodies | | ⚠️ |
-| Denial-of-service | — (not implemented) | |
+Nothing in the table below is implemented yet — the repository is at the foundation
+stage (a console entry point plus placeholder packages). The marks describe the
+**planned scope** of each area, not its current status:
+
+- ✅ **will be built** — neutral framework infrastructure.
+- ⚠️ **scaffolding only** — interfaces and `// TODO`; no weaponized logic.
+
+| Area | Planned scope |
+|------|:-------------:|
+| Core (framework object, datastore, events, jobs) | ✅ |
+| Module engine (contract, loader, registry, search) | ✅ |
+| Workspaces & database (hosts, services, loot, creds, notes) | ✅ |
+| Reconnaissance modules (port/service/host discovery) | ✅ |
+| Session / handler / job management | ✅ |
+| Interfaces (console, RPC, db utility, resource scripts) | ✅ |
+| Exploit / payload / post / encoder / nop / evasion bodies | ⚠️ |
+| Denial-of-service | not planned |
 
 ## Getting started
 
 Requires Go (see `go.mod` for the version).
 
 ```sh
-# build
-go build ./cmd
+# build (the output name must differ from the ./cmd directory)
+go build -o msf-go ./cmd
 
 # run the console
 go run ./cmd
