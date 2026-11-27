@@ -77,14 +77,27 @@ func (d *Datastore) SetGlobal(name, value string) error {
 
 func (d *Datastore) set(name, value string, global bool) error {
 	key := normalizeKey(name)
-	d.mu.Lock()
-	defer d.mu.Unlock()
+
+	// Look up the option under a read lock, then validate outside any lock.
+	// Option.Validate is caller-supplied and must not run inside the critical
+	// section: it could block every other reader and writer, or deadlock if it
+	// re-enters the datastore (a write lock cannot be re-acquired as a read lock).
+	d.mu.RLock()
 	opt, ok := d.schema[key]
+	d.mu.RUnlock()
 	if !ok {
 		return fmt.Errorf("%w: %q", ErrUnknownOption, name)
 	}
 	if err := opt.Check(value); err != nil {
 		return err
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	// Re-check under the write lock: the option may have been replaced since the
+	// read above.
+	if _, ok := d.schema[key]; !ok {
+		return fmt.Errorf("%w: %q", ErrUnknownOption, name)
 	}
 	if global {
 		d.global[key] = value

@@ -164,3 +164,36 @@ func TestDatastoreConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDatastoreSetRunsCustomValidatorWithoutDeadlock(t *testing.T) {
+	d := newTestStore(t)
+	called := false
+	if err := d.Register(Option{
+		Name: "CB",
+		Type: OptString,
+		Validate: func(v string) error {
+			called = true
+			// A re-entrant read must not deadlock: validation runs outside the
+			// datastore lock.
+			_, _ = d.Get("RPORT")
+			if v == "bad" {
+				return ErrInvalidValue
+			}
+			return nil
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Set("CB", "ok"); err != nil {
+		t.Fatalf("Set with custom validator = %v, want nil", err)
+	}
+	if !called {
+		t.Error("custom validator was not invoked by Set")
+	}
+	if err := d.Set("CB", "bad"); err == nil {
+		t.Error("Set with failing custom validator = nil, want error")
+	}
+	if v, _ := d.Get("CB"); v != "ok" {
+		t.Errorf("CB = %q, want ok (rejected value not stored)", v)
+	}
+}
