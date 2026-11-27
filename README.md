@@ -63,19 +63,23 @@ make check        # gofmt check, vet, build, tests with -race
 
 ## Repository governance
 
-This repository is tightly governed so that **no code is merged without review**:
+The repository is set up so that no code is merged without review.
 
-- `main` is protected: no direct pushes, required pull requests, required approval from
-  code owners (`CODEOWNERS`), required status checks, signed commits and linear history.
-- CI runs build, `go vet`, `staticcheck`, race-enabled tests and formatting checks.
-- Security CI runs `govulncheck`, secret scanning (gitleaks), dependency review and CodeQL.
-- A commit-policy check enforces Conventional Commits and attribution rules.
+**Active on every pull request** (GitHub Actions):
 
-To apply the branch protection and security settings after pushing to GitHub:
+- CI: build, `go vet`, `staticcheck`, race-enabled tests and formatting checks.
+- Security: `govulncheck`, secret scanning (gitleaks), dependency review and CodeQL.
+- Commit-policy check enforcing Conventional Commits and attribution rules.
+
+**Applied by the setup script** — branch protection is *not* active until this runs:
 
 ```sh
 ./scripts/setup-repo-security.sh
 ```
+
+It protects `main` (no direct pushes, required pull requests, required code-owner approval
+via `CODEOWNERS`, required status checks, signed commits, linear history) and enables secret
+scanning, push protection, Dependabot alerts and private vulnerability reporting.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow.
 

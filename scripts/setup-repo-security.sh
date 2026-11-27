@@ -44,8 +44,8 @@ JSON
 
 echo ">> Requiring signed commits on 'main'..."
 # Signature enforcement has its own endpoint; it is not a field of the protection payload.
-gh api -X POST "repos/$REPO/branches/main/protection/required_signatures" >/dev/null \
-  && echo "   signed commits required"
+gh api -X POST "repos/$REPO/branches/main/protection/required_signatures" >/dev/null
+echo "   signed commits required"
 
 echo ">> Enabling secret scanning and push protection..."
 # gh api -F sends flat fields; the nested object is sent via --input JSON.
@@ -60,11 +60,13 @@ gh api -X PATCH "repos/$REPO" --input - >/dev/null <<'JSON' || \
 JSON
 
 echo ">> Enabling private vulnerability reporting..."
-gh api -X PUT "repos/$REPO/private-vulnerability-reporting" >/dev/null \
-  && echo "   private vulnerability reporting enabled"
+gh api -X PUT "repos/$REPO/private-vulnerability-reporting" >/dev/null
+echo "   private vulnerability reporting enabled"
 
-gh api -X PUT "repos/$REPO/vulnerability-alerts" >/dev/null && echo "   vulnerability alerts enabled"
-gh api -X PUT "repos/$REPO/automated-security-fixes" >/dev/null && echo "   automated security fixes enabled"
+gh api -X PUT "repos/$REPO/vulnerability-alerts" >/dev/null
+echo "   vulnerability alerts enabled"
+gh api -X PUT "repos/$REPO/automated-security-fixes" >/dev/null
+echo "   automated security fixes enabled"
 
 echo ">> Done. 'main' now requires reviewed PRs, code-owner approval, signed commits,"
 echo "   linear history, passing checks, and blocks direct/force pushes."
