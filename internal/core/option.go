@@ -67,23 +67,24 @@ type Option struct {
 // force disproportionate work or allocation during validation.
 const maxValueLen = 8192
 
-// validator returns the effective validator for the option: the custom one when
-// set, otherwise the default validator for the type.
-func (o Option) validator() func(string) error {
-	if o.Validate != nil {
-		return o.Validate
-	}
-	return validatorFor(o.Type, o.Enum)
-}
-
 // Check validates a raw string value against the option. The error names the
 // option but never includes the raw value, so sensitive values are not leaked
-// into logs.
+// into logs. A caller-supplied validator is not trusted to omit the value from
+// its message, so its error is reduced to a classified sentinel (errors.Is still
+// works) and its text is discarded.
 func (o Option) Check(v string) error {
 	if len(v) > maxValueLen {
 		return fmt.Errorf("option %q: %w: value exceeds %d bytes", o.Name, ErrInvalidValue, maxValueLen)
 	}
-	if err := o.validator()(v); err != nil {
+	if o.Validate != nil {
+		if err := o.Validate(v); err != nil {
+			return fmt.Errorf("option %q: %w", o.Name, classifyValidationError(err))
+		}
+		return nil
+	}
+	// Built-in validators are part of this package and never echo the raw value,
+	// so their descriptive messages are safe to surface.
+	if err := validatorFor(o.Type, o.Enum)(v); err != nil {
 		return fmt.Errorf("option %q: %w", o.Name, err)
 	}
 	return nil

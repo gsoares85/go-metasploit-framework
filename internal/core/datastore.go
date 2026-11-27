@@ -61,20 +61,28 @@ func NewDatastore() *Datastore {
 // (which may run a caller-supplied validator) happen outside the datastore lock
 // without a type-change race between validation and storage.
 func (d *Datastore) Register(opts ...Option) error {
+	normalized := make([]Option, 0, len(opts))
 	for _, opt := range opts {
 		if opt.Type == OptEnum && len(opt.Enum) == 0 {
 			return fmt.Errorf("option %q: enum option requires a non-empty Enum list", opt.Name)
 		}
-		if opt.Default == nil {
-			continue
+		if opt.Default != nil {
+			// Render the default once and validate that exact string through Check,
+			// so defaults get the same length cap and redaction as values passed to
+			// Set. Store the rendered string back on the option so later reads never
+			// re-invoke a fmt.Stringer (whose output could change, or could run while
+			// the datastore lock is held) and so Get/Set agree on the default.
+			rendered := defaultToString(opt.Default)
+			if err := opt.Check(rendered); err != nil {
+				return fmt.Errorf("invalid default: %w", err)
+			}
+			opt.Default = rendered
 		}
-		if err := opt.validator()(defaultToString(opt.Default)); err != nil {
-			return fmt.Errorf("invalid default for option %q: %w", opt.Name, err)
-		}
+		normalized = append(normalized, opt)
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	for _, opt := range opts {
+	for _, opt := range normalized {
 		d.schema[normalizeKey(opt.Name)] = opt
 	}
 	return nil

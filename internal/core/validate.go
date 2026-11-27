@@ -20,6 +20,21 @@ var (
 	ErrEmptyValue = errors.New("value is required")
 )
 
+// classifyValidationError maps an error returned by a caller-supplied validator
+// to one of the package sentinels, discarding the original message (which is not
+// trusted to omit the raw value). The underlying sentinel is preserved so callers
+// can still match with errors.Is; anything unrecognized is treated as invalid.
+func classifyValidationError(err error) error {
+	switch {
+	case errors.Is(err, ErrEmptyValue):
+		return ErrEmptyValue
+	case errors.Is(err, ErrUnknownOption):
+		return ErrUnknownOption
+	default:
+		return ErrInvalidValue
+	}
+}
+
 const (
 	minPort = 1
 	maxPort = 65535

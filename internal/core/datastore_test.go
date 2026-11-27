@@ -2,7 +2,9 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -32,6 +34,66 @@ func TestDatastoreRejectsInvalidDefault(t *testing.T) {
 	// Empty default for a type that requires a value.
 	if err := d.Register(Option{Name: "NAME", Type: OptString, Default: ""}); !errors.Is(err, ErrEmptyValue) {
 		t.Errorf("Register empty default = %v, want ErrEmptyValue", err)
+	}
+}
+
+func TestDatastoreRejectsOversizeDefault(t *testing.T) {
+	d := NewDatastore()
+	// A default over the length cap must be rejected, the same as a value passed
+	// to Set, so Get can never return a value that Set would reject.
+	over := strings.Repeat("a", maxValueLen+1)
+	if err := d.Register(Option{Name: "DATA", Type: OptString, Default: over}); !errors.Is(err, ErrInvalidValue) {
+		t.Fatalf("Register oversize default = %v, want ErrInvalidValue", err)
+	}
+	if _, ok := d.Get("DATA"); ok {
+		t.Error("option registered despite an oversize default")
+	}
+	// A default exactly at the cap is accepted.
+	atCap := strings.Repeat("a", maxValueLen)
+	if err := d.Register(Option{Name: "DATA", Type: OptString, Default: atCap}); err != nil {
+		t.Fatalf("Register default at cap = %v, want nil", err)
+	}
+	if v, ok := d.Get("DATA"); !ok || v != atCap {
+		t.Errorf("DATA = (%q,%v), want the at-cap default", v[:min(len(v), 8)], ok)
+	}
+}
+
+// mutableStringer returns a different string on each call, to prove the datastore
+// renders a default exactly once (at registration) and stores that string.
+type mutableStringer struct {
+	calls *int
+	vals  []string
+}
+
+func (m mutableStringer) String() string {
+	i := *m.calls
+	*m.calls++
+	if i < len(m.vals) {
+		return m.vals[i]
+	}
+	return m.vals[len(m.vals)-1]
+}
+
+func TestDatastoreRendersDefaultOnceAndStores(t *testing.T) {
+	d := NewDatastore()
+	calls := 0
+	// First render is a valid port; a later render would be out of range. Only the
+	// first must ever be observed.
+	def := mutableStringer{calls: &calls, vals: []string{"80", "70000"}}
+	if err := d.Register(Option{Name: "RPORT", Type: OptPort, Default: def}); err != nil {
+		t.Fatalf("Register = %v, want nil", err)
+	}
+	if calls != 1 {
+		t.Fatalf("default rendered %d times at registration, want 1", calls)
+	}
+	// Repeated reads return the stored string and never re-invoke String.
+	for i := 0; i < 3; i++ {
+		if v, ok := d.Get("RPORT"); !ok || v != "80" {
+			t.Fatalf("Get #%d = (%q,%v), want (80,true)", i, v, ok)
+		}
+	}
+	if calls != 1 {
+		t.Errorf("String invoked %d times total, want 1 (default must be stored)", calls)
 	}
 }
 
@@ -153,6 +215,35 @@ func TestDatastoreOptionsSorted(t *testing.T) {
 				t.Errorf("RHOSTS resolved = %+v, want unset", o)
 			}
 		}
+	}
+}
+
+func TestDatastoreRedactsCustomValidatorMessage(t *testing.T) {
+	const secret = "s3cr3t-token"
+	d := NewDatastore()
+	if err := d.Register(Option{
+		Name: "APIKEY",
+		Type: OptString,
+		// A hostile/naive validator that echoes the raw value into its message.
+		Validate: func(v string) error {
+			return fmt.Errorf("%w: rejected %q", ErrInvalidValue, v)
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	err := d.Set("APIKEY", secret)
+	if err == nil {
+		t.Fatal("Set = nil, want error")
+	}
+	if !errors.Is(err, ErrInvalidValue) {
+		t.Errorf("err = %v, want errors.Is ErrInvalidValue", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("error message leaked the raw value: %q", err.Error())
+	}
+	// The option name is still reported for diagnostics.
+	if !strings.Contains(err.Error(), "APIKEY") {
+		t.Errorf("error message = %q, want it to name the option", err.Error())
 	}
 }
 
