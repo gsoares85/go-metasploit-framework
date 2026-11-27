@@ -1,0 +1,58 @@
+name: Commit policy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Conventional Commits + attribution policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit subjects are Conventional Commits
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          pattern='^(feat|fix|docs|refactor|test|chore|perf|build|ci|style|revert)(\([a-z0-9/_-]+\))?(!)?: .+'
+          fail=0
+          while IFS= read -r subject; do
+            if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+              echo "::error::Non-conventional commit subject: $subject"
+              fail=1
+            fi
+          done < <(git log --no-merges --format=%s "$base..$head")
+          exit $fail
+
+      - name: Forbid prohibited attribution in commits and PR body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          # Forbidden attribution patterns (assistants / auto-generation).
+          forbidden='claude|copilot|chatgpt|generated with|co-authored-by:[[:space:]]*.*(claude|copilot|bot@|noreply)|as an ai|🤖'
+          text="$(git log --no-merges --format='%s%n%b' "$base..$head")
+          $PR_TITLE
+          $PR_BODY"
+          if printf '%s' "$text" | grep -iEq "$forbidden"; then
+            echo "::error::Commit messages / PR description contain prohibited attribution. Remove any assistant or auto-generation references."
+            exit 1
+          fi
+
+      - name: Forbid references to local, unversioned paths in PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # PR descriptions must be self-contained: no pointers to local-only folders.
+          if printf '%s' "$PR_BODY" | grep -Eq '(^|[^a-zA-Z0-9_/.])(docs/|\.claude/|CLAUDE\.md)'; then
+            echo "::error::PR description references local/unversioned paths (docs/, .claude/, CLAUDE.md). Make it self-contained."
+            exit 1
+          fi

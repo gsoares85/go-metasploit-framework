@@ -1,0 +1,14 @@
+# Normalize line endings to LF in the repository for all text files.
+# Prevents CRLF from breaking shell scripts and CI workflows on checkout.
+* text=auto eol=lf
+
+# Windows-specific scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files are never modified.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary

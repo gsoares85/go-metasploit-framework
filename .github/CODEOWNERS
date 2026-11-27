@@ -1,0 +1,13 @@
+# Code owners — every change requires review/approval from the owner.
+# This file, combined with branch protection ("Require review from Code Owners"),
+# ensures no code is merged without the owner's explicit approval.
+
+# Default owner for everything in the repository.
+*       @gsoares85
+
+# Critical governance files: owner-only.
+/.github/        @gsoares85
+/CODEOWNERS      @gsoares85
+/SECURITY.md     @gsoares85
+/go.mod          @gsoares85
+/go.sum          @gsoares85
