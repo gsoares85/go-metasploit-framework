@@ -33,14 +33,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+      - name: Scan for secrets
         env:
-          # Required by gitleaks-action v2 to scan pull requests.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Do not post PR comments, so no comment-write permission is needed (least privilege).
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_VERSION: "8.24.3"
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          curl -sSLf "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C "$tmp" gitleaks
+          gl="$tmp/gitleaks"
+          "$gl" version
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Scan every commit the PR introduces. The default git-log traversal
+            # follows all parents, so commits from merged side branches and the
+            # merge commits themselves are included (unlike the action's
+            # --first-parent --no-merges walk).
+            base='${{ github.event.pull_request.base.sha }}'
+            head='${{ github.event.pull_request.head.sha }}'
+            echo "Scanning all commits in ${base}..${head}"
+            "$gl" detect --source . --config .gitleaks.toml --redact --no-banner \
+              --log-opts "${base}..${head}"
+          else
+            # Full-history scan on push and on the weekly schedule.
+            "$gl" detect --source . --config .gitleaks.toml --redact --no-banner
+          fi
 
   dependency-review:
     name: Dependency review
