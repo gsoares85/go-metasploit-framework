@@ -33,6 +33,14 @@ type ResolvedOption struct {
 	Source      string // "module", "global", "default" or "unset"
 }
 
+// Source values reported by ResolvedOption.Source and by resolve.
+const (
+	SourceModule  = "module"
+	SourceGlobal  = "global"
+	SourceDefault = "default"
+	SourceUnset   = "unset"
+)
+
 // NewDatastore returns an empty, ready-to-use Datastore.
 func NewDatastore() *Datastore {
 	return &Datastore{
@@ -181,15 +189,15 @@ func (d *Datastore) Validate() error {
 // does not lock; callers must hold at least a read lock.
 func (d *Datastore) resolve(key string) (value, source string, ok bool) {
 	if v, found := d.module[key]; found {
-		return v, "module", true
+		return v, SourceModule, true
 	}
 	if v, found := d.global[key]; found {
-		return v, "global", true
+		return v, SourceGlobal, true
 	}
 	if opt, found := d.schema[key]; found && opt.Default != nil {
-		return defaultToString(opt.Default), "default", true
+		return defaultToString(opt.Default), SourceDefault, true
 	}
-	return "", "unset", false
+	return "", SourceUnset, false
 }
 
 // normalizeKey makes option lookups case-insensitive and whitespace-tolerant.

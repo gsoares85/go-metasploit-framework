@@ -20,6 +20,14 @@ var (
 	ErrEmptyValue = errors.New("value is required")
 )
 
+const (
+	minPort = 1
+	maxPort = 65535
+	// Hostname limits per RFC 1123.
+	maxHostnameLen = 253
+	maxLabelLen    = 63
+)
+
 // boolValues holds the string forms accepted by ValidateBool, compared
 // case-insensitively.
 var boolValues = map[string]struct{}{
@@ -67,8 +75,8 @@ func ValidatePort(v string) error {
 	if err != nil {
 		return fmt.Errorf("%w: port must be a number", ErrInvalidValue)
 	}
-	if n < 1 || n > 65535 {
-		return fmt.Errorf("%w: port must be between 1 and 65535", ErrInvalidValue)
+	if n < minPort || n > maxPort {
+		return fmt.Errorf("%w: port must be between %d and %d", ErrInvalidValue, minPort, maxPort)
 	}
 	return nil
 }
@@ -154,7 +162,7 @@ func validatorFor(t OptType, enum []string) func(string) error {
 // isValidHostname reports whether v is a syntactically valid hostname per the
 // RFC 1123 label rules. A single trailing dot (FQDN form) is allowed.
 func isValidHostname(v string) bool {
-	if len(v) > 253 {
+	if len(v) > maxHostnameLen {
 		return false
 	}
 	host := strings.TrimSuffix(v, ".")
@@ -162,7 +170,7 @@ func isValidHostname(v string) bool {
 		return false
 	}
 	for _, label := range strings.Split(host, ".") {
-		if len(label) == 0 || len(label) > 63 {
+		if len(label) == 0 || len(label) > maxLabelLen {
 			return false
 		}
 		if label[0] == '-' || label[len(label)-1] == '-' {
