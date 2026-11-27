@@ -42,15 +42,25 @@ gh api -X PUT "repos/$REPO/branches/main/protection" \
 }
 JSON
 
+# Optional hardening. A failure is reported as a warning but does not abort the
+# script, so one unavailable feature does not block the others. (set -e still
+# guards the mandatory branch-protection call above.)
+enable() { # <description> <gh api args...>
+  local desc="$1"; shift
+  if gh api "$@" >/dev/null; then
+    echo "   ${desc}: enabled"
+  else
+    echo "   WARNING: could not enable ${desc} (may need a different plan or admin rights)" >&2
+  fi
+}
+
 echo ">> Requiring signed commits on 'main'..."
 # Signature enforcement has its own endpoint; it is not a field of the protection payload.
-gh api -X POST "repos/$REPO/branches/main/protection/required_signatures" >/dev/null
-echo "   signed commits required"
+enable "signed commits on main" -X POST "repos/$REPO/branches/main/protection/required_signatures"
 
 echo ">> Enabling secret scanning and push protection..."
 # gh api -F sends flat fields; the nested object is sent via --input JSON.
-gh api -X PATCH "repos/$REPO" --input - >/dev/null <<'JSON' || \
-  echo "   (secret scanning may require GitHub Advanced Security on private repos)"
+enable "secret scanning + push protection" -X PATCH "repos/$REPO" --input - <<'JSON'
 {
   "security_and_analysis": {
     "secret_scanning": { "status": "enabled" },
@@ -59,15 +69,12 @@ gh api -X PATCH "repos/$REPO" --input - >/dev/null <<'JSON' || \
 }
 JSON
 
-echo ">> Enabling private vulnerability reporting..."
-gh api -X PUT "repos/$REPO/private-vulnerability-reporting" >/dev/null
-echo "   private vulnerability reporting enabled"
+echo ">> Enabling Dependabot alerts and private vulnerability reporting..."
+enable "private vulnerability reporting" -X PUT "repos/$REPO/private-vulnerability-reporting"
+enable "Dependabot vulnerability alerts" -X PUT "repos/$REPO/vulnerability-alerts"
+enable "automated security fixes" -X PUT "repos/$REPO/automated-security-fixes"
 
-gh api -X PUT "repos/$REPO/vulnerability-alerts" >/dev/null
-echo "   vulnerability alerts enabled"
-gh api -X PUT "repos/$REPO/automated-security-fixes" >/dev/null
-echo "   automated security fixes enabled"
-
-echo ">> Done. 'main' now requires reviewed PRs, code-owner approval, signed commits,"
+echo ">> Branch protection applied: 'main' requires reviewed PRs, code-owner approval,"
 echo "   linear history, passing checks, and blocks direct/force pushes."
+echo ">> Review any WARNING lines above and verify optional features in repository settings."
 echo ">> Note: required status check names must match the CI job names after the first run."
