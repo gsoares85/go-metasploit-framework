@@ -35,6 +35,16 @@ func TestDatastoreRejectsInvalidDefault(t *testing.T) {
 	}
 }
 
+func TestDatastoreRejectsEmptyEnum(t *testing.T) {
+	d := NewDatastore()
+	if err := d.Register(Option{Name: "ACTION", Type: OptEnum}); err == nil {
+		t.Error("Register enum without allowed values = nil, want error")
+	}
+	if err := d.Register(Option{Name: "ACTION", Type: OptEnum, Enum: []string{"scan"}}); err != nil {
+		t.Errorf("Register valid enum = %v, want nil", err)
+	}
+}
+
 func TestDatastoreResolutionOrder(t *testing.T) {
 	d := newTestStore(t)
 

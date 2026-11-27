@@ -50,12 +50,21 @@ func NewDatastore() *Datastore {
 	}
 }
 
-// Register adds options to the schema. Re-registering an option name replaces
-// its definition. It validates each option's declared default and, if any
-// default is invalid, registers nothing and returns an error — a module cannot
-// ship a default value that its own type would reject.
+// Register adds options to the schema and returns an error (registering nothing)
+// if any option is misconfigured: an enum with no allowed values, or a default
+// that its own type would reject. Re-registering an option name replaces its
+// definition.
+//
+// Register is a setup-time operation: all options are expected to be registered
+// before the datastore is used concurrently or any value is set, and the schema
+// is treated as immutable afterward. That contract is what lets value validation
+// (which may run a caller-supplied validator) happen outside the datastore lock
+// without a type-change race between validation and storage.
 func (d *Datastore) Register(opts ...Option) error {
 	for _, opt := range opts {
+		if opt.Type == OptEnum && len(opt.Enum) == 0 {
+			return fmt.Errorf("option %q: enum option requires a non-empty Enum list", opt.Name)
+		}
 		if opt.Default == nil {
 			continue
 		}
