@@ -7,18 +7,36 @@ import (
 	"testing"
 )
 
-func newTestStore() *Datastore {
+func newTestStore(t *testing.T) *Datastore {
+	t.Helper()
 	d := NewDatastore()
-	d.Register(
+	if err := d.Register(
 		Option{Name: "RPORT", Type: OptPort, Default: "80", Description: "target port"},
 		Option{Name: "RHOSTS", Type: OptAddress, Required: true, Description: "target host"},
 		Option{Name: "THREADS", Type: OptInt, Default: 10, Description: "worker count"},
-	)
+	); err != nil {
+		t.Fatalf("Register: %v", err)
+	}
 	return d
 }
 
+func TestDatastoreRejectsInvalidDefault(t *testing.T) {
+	d := NewDatastore()
+	// Out-of-range port default.
+	if err := d.Register(Option{Name: "RPORT", Type: OptPort, Default: 70000}); !errors.Is(err, ErrInvalidValue) {
+		t.Fatalf("Register invalid default = %v, want ErrInvalidValue", err)
+	}
+	if _, ok := d.Get("RPORT"); ok {
+		t.Error("option was registered despite an invalid default")
+	}
+	// Empty default for a type that requires a value.
+	if err := d.Register(Option{Name: "NAME", Type: OptString, Default: ""}); !errors.Is(err, ErrEmptyValue) {
+		t.Errorf("Register empty default = %v, want ErrEmptyValue", err)
+	}
+}
+
 func TestDatastoreResolutionOrder(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 
 	// Unset, no default -> not resolved.
 	if v, ok := d.Get("RHOSTS"); ok {
@@ -59,7 +77,7 @@ func TestDatastoreResolutionOrder(t *testing.T) {
 }
 
 func TestDatastoreUnknownOption(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	if err := d.Set("NOPE", "1"); !errors.Is(err, ErrUnknownOption) {
 		t.Errorf("Set unknown = %v, want ErrUnknownOption", err)
 	}
@@ -69,7 +87,7 @@ func TestDatastoreUnknownOption(t *testing.T) {
 }
 
 func TestDatastoreInvalidValueNotStored(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	if err := d.Set("RPORT", "70000"); err == nil {
 		t.Fatal("Set invalid port = nil, want error")
 	}
@@ -80,7 +98,7 @@ func TestDatastoreInvalidValueNotStored(t *testing.T) {
 }
 
 func TestDatastoreCaseInsensitive(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	if err := d.Set("rhosts", "1.2.3.4"); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +108,7 @@ func TestDatastoreCaseInsensitive(t *testing.T) {
 }
 
 func TestDatastoreValidateRequired(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	if err := d.Validate(); !errors.Is(err, ErrEmptyValue) {
 		t.Fatalf("Validate with missing required = %v, want ErrEmptyValue", err)
 	}
@@ -103,7 +121,7 @@ func TestDatastoreValidateRequired(t *testing.T) {
 }
 
 func TestDatastoreOptionsSorted(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	opts := d.Options()
 	if len(opts) != 3 {
 		t.Fatalf("Options len = %d, want 3", len(opts))
@@ -129,7 +147,7 @@ func TestDatastoreOptionsSorted(t *testing.T) {
 }
 
 func TestDatastoreConcurrentAccess(t *testing.T) {
-	d := newTestStore()
+	d := newTestStore(t)
 	const workers = 50
 	var wg sync.WaitGroup
 	wg.Add(workers)

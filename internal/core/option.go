@@ -63,16 +63,20 @@ type Option struct {
 	Validate func(v string) error
 }
 
-// Check validates a raw string value against the option. It uses the custom
-// Validate function when set, otherwise the default validator for the type. The
-// error names the option but never includes the raw value, so sensitive values
-// are not leaked into logs.
-func (o Option) Check(v string) error {
-	validate := o.Validate
-	if validate == nil {
-		validate = validatorFor(o.Type, o.Enum)
+// validator returns the effective validator for the option: the custom one when
+// set, otherwise the default validator for the type.
+func (o Option) validator() func(string) error {
+	if o.Validate != nil {
+		return o.Validate
 	}
-	if err := validate(v); err != nil {
+	return validatorFor(o.Type, o.Enum)
+}
+
+// Check validates a raw string value against the option. The error names the
+// option but never includes the raw value, so sensitive values are not leaked
+// into logs.
+func (o Option) Check(v string) error {
+	if err := o.validator()(v); err != nil {
 		return fmt.Errorf("option %q: %w", o.Name, err)
 	}
 	return nil

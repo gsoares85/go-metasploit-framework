@@ -43,13 +43,24 @@ func NewDatastore() *Datastore {
 }
 
 // Register adds options to the schema. Re-registering an option name replaces
-// its definition.
-func (d *Datastore) Register(opts ...Option) {
+// its definition. It validates each option's declared default and, if any
+// default is invalid, registers nothing and returns an error — a module cannot
+// ship a default value that its own type would reject.
+func (d *Datastore) Register(opts ...Option) error {
+	for _, opt := range opts {
+		if opt.Default == nil {
+			continue
+		}
+		if err := opt.validator()(defaultToString(opt.Default)); err != nil {
+			return fmt.Errorf("invalid default for option %q: %w", opt.Name, err)
+		}
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for _, opt := range opts {
 		d.schema[normalizeKey(opt.Name)] = opt
 	}
+	return nil
 }
 
 // Set validates value and stores it in the active-module overlay. It returns
