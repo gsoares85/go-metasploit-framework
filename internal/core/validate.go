@@ -113,6 +113,27 @@ func ValidateEnum(allowed []string) func(string) error {
 	}
 }
 
+// validatorFor returns the default validator for an option type. The enum list
+// is only used for OptEnum.
+func validatorFor(t OptType, enum []string) func(string) error {
+	switch t {
+	case OptInt:
+		return ValidateInt
+	case OptBool:
+		return ValidateBool
+	case OptPort:
+		return ValidatePort
+	case OptAddress:
+		return ValidateAddress
+	case OptPath:
+		return ValidatePath
+	case OptEnum:
+		return ValidateEnum(enum)
+	default: // OptString and any unknown type
+		return ValidateString
+	}
+}
+
 // isValidHostname reports whether v is a syntactically valid hostname per the
 // RFC 1123 label rules. A single trailing dot (FQDN form) is allowed.
 func isValidHostname(v string) bool {

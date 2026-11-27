@@ -3,6 +3,8 @@
 // on UI or infrastructure details; dependencies point inward toward this package.
 package core
 
+import "fmt"
+
 // OptType is the declared type of a module option. It drives validation and how
 // the console renders and parses the option's value.
 type OptType int
@@ -44,4 +46,34 @@ func (t OptType) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// Option describes a single configurable module option: its name, type, whether
+// it must be set before running, a default value, a human-readable description,
+// the allowed values for an enum, and an optional custom validator.
+type Option struct {
+	Name        string
+	Type        OptType
+	Required    bool
+	Default     any
+	Description string
+	// Enum lists the valid values when Type is OptEnum.
+	Enum []string
+	// Validate, when non-nil, replaces the default validator for the type.
+	Validate func(v string) error
+}
+
+// Check validates a raw string value against the option. It uses the custom
+// Validate function when set, otherwise the default validator for the type. The
+// error names the option but never includes the raw value, so sensitive values
+// are not leaked into logs.
+func (o Option) Check(v string) error {
+	validate := o.Validate
+	if validate == nil {
+		validate = validatorFor(o.Type, o.Enum)
+	}
+	if err := validate(v); err != nil {
+		return fmt.Errorf("option %q: %w", o.Name, err)
+	}
+	return nil
 }
