@@ -1,0 +1,16 @@
+# gitleaks configuration — extends the default ruleset.
+# Used by CI (.github/workflows/security.yml) to block secrets from being committed.
+title = "go-metasploit-framework gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+# Do not scan vendored or build output.
+paths = [
+  '''(^|/)vendor/''',
+  '''(^|/)dist/''',
+  '''(^|/)bin/''',
+  '''\.sqlite3?$''',
+]

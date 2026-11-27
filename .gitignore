@@ -1,0 +1,58 @@
+# === Ferramental e documentação local (NUNCA versionar) ===
+# Mantidos fora do repositório por decisão do projeto.
+# Apenas código-fonte e README.md são versionados.
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
+docs/
+
+# === IDEs ===
+.idea/
+.vscode/
+*.iml
+
+# === Go ===
+# Binários / artefatos de build
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go-metasploit-framework
+msf-go
+
+# Cobertura / profiling
+coverage.out
+coverage.html
+*.prof
+*.cpu
+*.mem
+
+# Cache / vendor opcional
+vendor/
+
+# === Banco de dados local do framework ===
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/
+*.msf4/
+
+# === Dados sensíveis de engajamento (NUNCA versionar) ===
+# Resultados reais de scans, loot, credenciais, exports
+loot/
+exports/
+*.creds
+*.loot
+
+# === Sistema ===
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
